@@ -1,69 +1,115 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from "next/link";
+import { ArrowRight, Check } from "lucide-react";
+import { Card, CardHead } from "@/components/ui/Card";
+import { MetricCards } from "@/components/features/MetricCards";
+import { FocusTimer } from "@/components/features/FocusTimer";
+import { ScheduleBriefing } from "@/components/features/ScheduleBriefing";
+import { TodayFocus } from "@/components/features/PriorityBoard";
+import { ProductivityHeatmap } from "@/components/features/ProductivityHeatmap";
+import { RightPanel } from "@/components/features/RightPanel";
+import { cn } from "@/lib/cn";
+import { dayKey, fmtDateLong, greeting, todayKey } from "@/lib/time";
+import { useNow } from "@/lib/useNow";
+import { useProductivity } from "@/lib/store/productivity";
+import { useSettings } from "@/lib/store/settings";
+import { useTasks } from "@/lib/store/tasks";
+import { priorityChip } from "@/components/features/TaskBoard";
+
+function DashboardHeader() {
+  const now = useNow(30000);
+  const name = useSettings((s) => s.name);
+  const activity = useProductivity((s) => s.activity);
+  const sessions = useProductivity((s) => s.sessions);
+  const today = todayKey();
+  const a = activity[today];
+  const sessionCount = sessions.filter((s) => dayKey(s.startedAt) === today).length;
+  const pct = a?.planned ? Math.round((a.plannedDone / a.planned) * 100) : 0;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div>
+      <h1 className="text-[26px] font-semibold tracking-[-0.025em] text-ink">
+        {greeting(now)}, {name}.
+      </h1>
+      <p className="mt-1 text-[13px] text-ink-3">{fmtDateLong(now)}</p>
+      <p className="mt-2 text-[12.5px] text-ink-2">
+        <span className="tnum font-semibold text-ink">{a?.tasksDone ?? 0} tasks completed</span>
+        <span className="mx-1.5 text-ink-3">·</span>
+        <span className="tnum font-semibold text-ink">{sessionCount} focus sessions</span>
+        <span className="mx-1.5 text-ink-3">·</span>
+        <span className="tnum font-semibold text-ink">{pct}% of today&apos;s plan</span>
+      </p>
+    </div>
+  );
+}
+
+function TaskQueue() {
+  const tasks = useTasks((s) => s.tasks);
+  const setStatus = useTasks((s) => s.setStatus);
+  const open = tasks.filter((t) => t.status !== "done").sort((a, b) => a.order - b.order).slice(0, 5);
+
+  return (
+    <Card className="flex h-full flex-col p-5">
+      <CardHead
+        title="Task queue"
+        sub=""
+        action={
+          <Link href="/tasks" className="flex items-center gap-1 text-[11px] font-medium text-accent transition-opacity hover:opacity-70">
+            Show all <ArrowRight size={10} />
+          </Link>
+        }
+      />
+      <div className="mt-3 flex-1 space-y-1">
+        {open.length === 0 ? <p className="py-4 text-center text-[12px] text-ink-3">Queue is clear.</p> : null}
+        {open.map((t) => (
+          <div key={t.id} className="flex items-center gap-2.5 rounded-xl px-2 py-2 transition-colors hover:bg-surface-2">
+            <button
+              aria-label="Complete task"
+              onClick={() => setStatus(t.id, "done")}
+              className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md border border-line text-transparent transition-colors hover:border-accent-3 hover:text-accent-3"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+              <Check size={11} strokeWidth={3} />
+            </button>
+            <span className="min-w-0 flex-1 truncate text-[12.5px] font-medium text-ink-2">{t.title}</span>
+            {priorityChip(t.priority)}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_312px]">
+      <div className="space-y-4">
+        <DashboardHeader />
+        <MetricCards />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <FocusTimer />
+          </div>
+          <ScheduleBriefing />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <TodayFocus />
+          <TaskQueue />
         </div>
-      </main>
+        <Card className="p-5">
+          <ProductivityHeatmap withToggle={false} />
+          <div className="mt-3 flex justify-end">
+            <Link href="/productivity" className={cn("flex items-center gap-1 text-[11px] font-medium text-accent hover:opacity-70")}>
+              Day / month / year views <ArrowRight size={10} />
+            </Link>
+          </div>
+        </Card>
+      </div>
+      <aside className="hidden xl:block">
+        <div className="sticky top-[72px]">
+          <RightPanel />
+        </div>
+      </aside>
     </div>
   );
 }
