@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Providers } from "@/components/shell/Providers";
 import { Sidebar } from "@/components/shell/Sidebar";
@@ -16,17 +17,15 @@ export const metadata: Metadata = {
   description: "An intelligent command center for one ambitious person.",
 };
 
+const themeScript = `(function(){try{var s=JSON.parse(localStorage.getItem("wanei.settings.v1")||"{}");var t=(s.state&&s.state.theme)||"system";var d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d)}catch(e){}})()`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=JSON.parse(localStorage.getItem("wanei.settings.v1")||"{}");var t=(s.state&&s.state.theme)||"system";var d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d)}catch(e){}})()`,
-          }}
-        />
-      </head>
       <body className={inter.variable}>
+        <Script id="theme-init" strategy="beforeInteractive">
+          {themeScript}
+        </Script>
         <Providers>
           <div className="flex min-h-dvh">
             <Sidebar />
