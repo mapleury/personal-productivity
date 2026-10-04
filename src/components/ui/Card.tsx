@@ -17,10 +17,10 @@ export function CardHead({
   className?: string;
 }) {
   return (
-    <div className={cn("flex items-start justify-between gap-3", className)}>
+    <div className={cn("flex items-start justify-between gap-4", className)}>
       <div className="min-w-0">
-        <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-ink">{title}</h3>
-        {sub ? <p className="mt-0.5 text-xs text-ink-3">{sub}</p> : null}
+        <h3 className="text-[16px] font-semibold tracking-[-0.01em] text-ink">{title}</h3>
+        {sub ? <p className="mt-1 text-[12.5px] leading-relaxed text-ink-3">{sub}</p> : null}
       </div>
       {action ? <div className="shrink-0">{action}</div> : null}
     </div>

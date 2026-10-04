@@ -18,14 +18,23 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=JSON.parse(localStorage.getItem("wanei.settings.v1")||"{}");var t=(s.state&&s.state.theme)||"system";var d=t==="dark"||(t==="system"&&matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d)}catch(e){}})()`,
+          }}
+        />
+      </head>
       <body className={inter.variable}>
         <Providers>
           <div className="flex min-h-dvh">
             <Sidebar />
             <div className="flex min-w-0 flex-1 flex-col">
               <TopBar />
-              <main className="flex-1 px-4 pt-5 pb-36 md:px-6 md:pb-28">{children}</main>
+              <main className="flex-1 px-5 pt-8 pb-40 md:px-10 md:pt-10 md:pb-32">
+                <div className="mx-auto w-full max-w-[1400px]">{children}</div>
+              </main>
             </div>
           </div>
           <MusicBar />

@@ -13,9 +13,9 @@ const VARIANTS: Record<Variant, string> = {
 };
 
 const SIZES: Record<Size, string> = {
-  xs: "h-7 px-2.5 text-[11px] gap-1.5",
-  sm: "h-8 px-3 text-xs gap-1.5",
-  md: "h-9 px-4 text-[13px] gap-2",
+  xs: "h-8 px-3.5 text-[11.5px] gap-1.5",
+  sm: "h-10 px-4.5 text-[12.5px] gap-2",
+  md: "h-11 px-6 text-[13.5px] gap-2.5",
 };
 
 export function Button({
@@ -49,7 +49,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cn(
-        "inline-flex h-8 w-8 items-center justify-center rounded-full text-ink-2 transition-all duration-200 ease-[var(--ease-soft)] hover:bg-surface-2",
+        "inline-flex h-10 w-10 items-center justify-center rounded-full text-ink-2 transition-all duration-200 ease-[var(--ease-soft)] hover:bg-surface-2",
         active && "bg-accent-soft text-accent",
         className,
       )}

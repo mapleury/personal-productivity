@@ -3,9 +3,21 @@
 import { useEffect } from "react";
 import { fmtClock } from "@/lib/time";
 import { remainingSec, useTimer } from "@/lib/store/timer";
+import { useSettings } from "@/lib/store/settings";
 import { useUI } from "@/lib/store/ui";
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const theme = useSettings((s) => s.theme);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () =>
+      document.documentElement.classList.toggle("dark", theme === "dark" || (theme === "system" && mq.matches));
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [theme]);
+
   useEffect(() => {
     const id = setInterval(() => {
       const t = useTimer.getState();
@@ -29,4 +41,3 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
-// 

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, Mic, Search, Settings } from "lucide-react";
+import { Menu, Mic, Moon, Search, Settings, Sun } from "lucide-react";
 import { IconButton } from "@/components/ui/Button";
 import { fmtClock } from "@/lib/time";
 import { remainingSec, useTimer } from "@/lib/store/timer";
@@ -38,12 +38,16 @@ export function TopBar() {
   const dockOpen = useUI((s) => s.dockOpen);
   const setMobileNav = useUI((s) => s.setMobileNav);
   const name = useSettings((s) => s.name);
+  const setTheme = useSettings((s) => s.setTheme);
   const initials = name
     .split(/\s+/)
     .map((p) => p[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+  const toggleTheme = () =>
+    setTheme(document.documentElement.classList.contains("dark") ? "light" : "dark");
 
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-line/70 bg-bg/85 px-4 backdrop-blur-md md:px-6">
@@ -65,6 +69,10 @@ export function TopBar() {
 
       <div className="ml-auto flex items-center gap-1">
         <TimerPill />
+        <IconButton label="Toggle dark mode" onClick={toggleTheme}>
+          <Moon size={15} className="dark:hidden" />
+          <Sun size={15} className="hidden dark:block" />
+        </IconButton>
         <IconButton label="Voice assistant" active={dockOpen} onClick={() => setDock(!dockOpen)}>
           <Mic size={15} />
         </IconButton>
@@ -73,7 +81,7 @@ export function TopBar() {
         </Link>
         <Link
           href="/profile"
-          className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-night text-[10px] font-semibold text-white transition-transform hover:scale-105"
+          className="ml-1 flex h-8 w-8 items-center justify-center rounded-full bg-accent text-[10px] font-semibold text-white transition-transform hover:scale-105"
         >
           {initials || "W"}
         </Link>
