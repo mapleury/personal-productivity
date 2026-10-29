@@ -27,7 +27,8 @@ export const useProductivity = create<ProdState>()(
     (set) => ({
       activity: {},
       sessions: [],
-      recordSession: (s) =>
+      recordSession: (s) => {
+        if (s.mode === "short" || s.mode === "long") return;
         set((st) => {
           const key = dayKey(s.startedAt);
           const a = st.activity[key] ?? zero(key);
@@ -38,7 +39,8 @@ export const useProductivity = create<ProdState>()(
               [key]: { ...a, focusMin: a.focusMin + s.minutes, sessions: a.sessions + 1 },
             },
           };
-        }),
+        });
+      },
       addFocus: (key, minutes) =>
         set((st) => {
           const a = st.activity[key] ?? zero(key);

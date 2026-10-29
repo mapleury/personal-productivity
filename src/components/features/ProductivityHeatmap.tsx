@@ -2,9 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
-import { dayKey, fmtDur, monthMatrix, todayKey } from "@/lib/time";
-import { dayScore, intensity, LEVEL_CLASS, LEVEL_LABEL, streak, type Level } from "@/lib/score";
+import { addDays, dayKey, fmtDur, monthMatrix, todayKey } from "@/lib/time";
+import { activityOnDay, dayScore, intensity, isFocusSession, LEVEL_CLASS, LEVEL_LABEL, streak, type Level } from "@/lib/score";
 import { useProductivity } from "@/lib/store/productivity";
+import { useTasks } from "@/lib/store/tasks";
 import { useNow } from "@/lib/useNow";
 
 type View = "day" | "week" | "month" | "year";
@@ -23,34 +24,39 @@ function Cell({ level, size = 12, title }: { level: Level; size?: number; title:
 export function ProductivityHeatmap({ withToggle = true }: { withToggle?: boolean }) {
   const activity = useProductivity((s) => s.activity);
   const sessions = useProductivity((s) => s.sessions);
+  const tasks = useTasks((s) => s.tasks);
   const [view, setView] = useState<View>("week");
   const today = todayKey();
   const nowMs = useNow(3600000).getTime();
 
   const keys = useMemo(
-    () => Array.from({ length: 400 }, (_, i) => dayKey(new Date(nowMs - i * 86400000))),
+    () => Array.from({ length: 400 }, (_, i) => dayKey(addDays(new Date(nowMs), -i))),
     [nowMs],
   );
-  const streakDays = streak(activity, keys);
-  const a = activity[today];
+  const dailyActivity = useMemo(
+    () => Object.fromEntries(keys.map((key) => [key, activityOnDay(activity, key, tasks, sessions)])),
+    [activity, keys, sessions, tasks],
+  );
+  const streakDays = streak(activity, keys, tasks, sessions);
+  const a = dailyActivity[today];
   const pct = a?.planned ? Math.round((a.plannedDone / a.planned) * 100) : 0;
 
   const weekGrid = useMemo(() => {
-    const end = new Date();
-    const start = new Date(end.getTime() - 19 * 7 * 86400000);
+    const end = new Date(nowMs);
+    const start = addDays(end, -19 * 7);
     const cols: string[][] = [];
     for (let w = 0; w < 20; w++) {
       const col: string[] = [];
-      for (let d = 0; d < 7; d++) col.push(dayKey(new Date(start.getTime() + (w * 7 + d) * 86400000)));
+      for (let d = 0; d < 7; d++) col.push(dayKey(addDays(start, w * 7 + d)));
       cols.push(col);
     }
     return cols;
-  }, []);
+  }, [nowMs]);
 
   const hourLevels = useMemo(() => {
     const per = Array(24).fill(0);
     for (const s of sessions) {
-      if (dayKey(s.startedAt) !== today) continue;
+      if (dayKey(s.startedAt) !== today || !isFocusSession(s)) continue;
       const h = new Date(s.startedAt).getHours();
       per[h] += s.minutes;
     }
@@ -66,7 +72,6 @@ export function ProductivityHeatmap({ withToggle = true }: { withToggle?: boolea
     <div>
       {withToggle ? (
         <div className="mb-4 flex items-center justify-between">
-          <span className="label-xs">Productivity activity</span>
           <div className="flex rounded-full bg-surface-2 p-0.5">
             {VIEWS.map((v) => (
               <button
@@ -90,7 +95,7 @@ export function ProductivityHeatmap({ withToggle = true }: { withToggle?: boolea
             {weekGrid.map((col, i) => (
               <div key={i} className="flex flex-col gap-[3px]">
                 {col.map((k) => (
-                  <Cell key={k} level={intensity(dayScore(activity[k]))} title={`${k} · ${LEVEL_LABEL[intensity(dayScore(activity[k]))]}`} />
+                  <Cell key={k} level={intensity(dayScore(dailyActivity[k]))} title={`${k} · ${LEVEL_LABEL[intensity(dayScore(dailyActivity[k]))]}`} />
                 ))}
               </div>
             ))}
@@ -122,7 +127,7 @@ export function ProductivityHeatmap({ withToggle = true }: { withToggle?: boolea
             const inMonth = d.getMonth() === new Date().getMonth();
             return (
               <div key={k} className={cn(!inMonth && "opacity-25")}>
-                <Cell level={intensity(dayScore(activity[k]))} size={18} title={`${k} · ${LEVEL_LABEL[intensity(dayScore(activity[k]))]}`} />
+                <Cell level={intensity(dayScore(dailyActivity[k]))} size={18} title={`${k} · ${LEVEL_LABEL[intensity(dayScore(dailyActivity[k]))]}`} />
               </div>
             );
           })}
@@ -147,7 +152,7 @@ export function ProductivityHeatmap({ withToggle = true }: { withToggle?: boolea
                         const inMonth = dd.getMonth() === m;
                         return (
                           <span key={k} className={cn(!inMonth && "opacity-0")}>
-                            <Cell level={intensity(dayScore(activity[k]))} size={6} title={k} />
+                            <Cell level={intensity(dayScore(dailyActivity[k]))} size={6} title={k} />
                           </span>
                         );
                       })}

@@ -1,8 +1,8 @@
 "use client";
 
 import { Card } from "@/components/ui/Card";
-import { dayKey, fmtDur, todayKey } from "@/lib/time";
-import { dayScore, streak } from "@/lib/score";
+import { addDays, dayKey, fmtDur, todayKey } from "@/lib/time";
+import { activityOnDay, dayScore, isFocusSession, streak } from "@/lib/score";
 import { useProductivity } from "@/lib/store/productivity";
 import { useSettings } from "@/lib/store/settings";
 import { useTasks } from "@/lib/store/tasks";
@@ -14,8 +14,10 @@ export default function ProfilePage() {
   const activity = useProductivity((s) => s.activity);
   const sessions = useProductivity((s) => s.sessions);
   const nowMs = useNow(60000).getTime();
-  const keys = Array.from({ length: 400 }, (_, i) => dayKey(new Date(nowMs - i * 86400000)));
-  const totalFocus = sessions.reduce((a, s) => a + s.minutes, 0);
+  const keys = Array.from({ length: 400 }, (_, i) => dayKey(addDays(new Date(nowMs), -i)));
+  const today = todayKey();
+  const focusSessions = sessions.filter(isFocusSession);
+  const totalFocus = focusSessions.reduce((a, s) => a + s.minutes, 0);
   const initials = name
     .split(/\s+/)
     .map((p) => p[0])
@@ -24,11 +26,11 @@ export default function ProfilePage() {
     .toUpperCase();
 
   const stats = [
-    { label: "Focus sessions", value: String(sessions.length) },
+    { label: "Focus sessions", value: String(focusSessions.length) },
     { label: "Total focus", value: fmtDur(totalFocus) },
     { label: "Tasks completed", value: String(tasks.filter((t) => t.status === "done").length) },
-    { label: "Activity streak", value: `${streak(activity, keys)} days` },
-    { label: "Today's index", value: `${dayScore(activity[todayKey()])}%` },
+    { label: "Activity streak", value: `${streak(activity, keys, tasks, sessions)} days` },
+    { label: "Today's index", value: `${dayScore(activityOnDay(activity, today, tasks, sessions))}%` },
     { label: "Open tasks", value: String(tasks.filter((t) => t.status !== "done").length) },
   ];
 
@@ -38,7 +40,6 @@ export default function ProfilePage() {
         <span className="flex h-16 w-16 items-center justify-center rounded-full bg-night text-[20px] font-semibold text-white">{initials || "W"}</span>
         <div>
           <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-ink">{name}</h1>
-          <p className="mt-0.5 text-[12.5px] text-ink-3">Operator of this personal productivity OS · running on wanei.</p>
         </div>
       </Card>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

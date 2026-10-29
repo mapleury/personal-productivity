@@ -4,9 +4,11 @@ import { Card, CardHead } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { dayKey, fmtDur, fromKey } from "@/lib/time";
 import { useProductivity } from "@/lib/store/productivity";
+import { isFocusSession } from "@/lib/score";
 
 export default function SessionsPage() {
-  const sessions = useProductivity((s) => s.sessions);
+  const allSessions = useProductivity((s) => s.sessions);
+  const sessions = allSessions.filter(isFocusSession);
   const groups = new Map<string, typeof sessions>();
   for (const s of sessions) {
     const k = dayKey(s.startedAt);

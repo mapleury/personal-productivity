@@ -10,12 +10,13 @@ import { useProductivity } from "@/lib/store/productivity";
 import { useTasks } from "@/lib/store/tasks";
 import { EVENT_META } from "@/lib/types";
 import { cn } from "@/lib/cn";
+import { isFocusSession } from "@/lib/score";
 
 function DayColumn({ day }: { day: Date }) {
   const key = dayKey(day);
   const tasks = useTasks((s) => s.tasks).filter((t) => t.dueDate === key);
   const events = useCalendar((s) => s.events).filter((e) => e.date === key);
-  const sessions = useProductivity((s) => s.sessions).filter((s) => dayKey(s.startedAt) === key);
+  const sessions = useProductivity((s) => s.sessions).filter((s) => dayKey(s.startedAt) === key && isFocusSession(s));
   const goals = useGoals((s) => s.goals).filter((g) => g.deadline === key);
   const isToday = key === dayKey(new Date());
 

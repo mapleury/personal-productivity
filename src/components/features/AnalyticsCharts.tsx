@@ -3,7 +3,8 @@
 import { Card, CardHead } from "@/components/ui/Card";
 import { Bar, Ring } from "@/components/ui/Progress";
 import { Bars } from "@/components/ui/charts";
-import { dayKey, fmtDur } from "@/lib/time";
+import { addDays, dayKey, fmtDur } from "@/lib/time";
+import { activityOnDay, isFocusSession } from "@/lib/score";
 import { useGoals } from "@/lib/store/goals";
 import { useProductivity } from "@/lib/store/productivity";
 import { useTasks } from "@/lib/store/tasks";
@@ -12,26 +13,28 @@ import { useNow } from "@/lib/useNow";
 export function AnalyticsCharts() {
   const activity = useProductivity((s) => s.activity);
   const sessions = useProductivity((s) => s.sessions);
+  const focusSessions = sessions.filter(isFocusSession);
   const tasks = useTasks((s) => s.tasks);
   const goals = useGoals((s) => s.goals);
   const nowMs = useNow(60000).getTime();
 
-  const last14 = Array.from({ length: 14 }, (_, i) => dayKey(new Date(nowMs - (13 - i) * 86400000)));
+  const last14 = Array.from({ length: 14 }, (_, i) => dayKey(addDays(new Date(nowMs), i - 13)));
   const labels = last14.map((k) => k.slice(5));
-  const focusVals = last14.map((k) => activity[k]?.focusMin ?? 0);
-  const plannedVals = last14.map((k) => activity[k]?.planned ?? 0);
-  const doneVals = last14.map((k) => activity[k]?.plannedDone ?? 0);
+  const daily = last14.map((k) => activityOnDay(activity, k, tasks, focusSessions));
+  const focusVals = daily.map((a) => a.focusMin);
+  const plannedVals = daily.map((a) => a.planned);
+  const doneVals = daily.map((a) => a.plannedDone);
 
   const hours = Array(24).fill(0);
-  for (const s of sessions) {
+  for (const s of focusSessions) {
     if (nowMs - s.startedAt > 30 * 86400000) continue;
     hours[new Date(s.startedAt).getHours()] += s.minutes;
   }
 
   const weeks = Array.from({ length: 8 }, (_, w) => {
-    const start = nowMs - (7 - w) * 7 * 86400000;
+    const start = addDays(new Date(nowMs), -(7 - w) * 7);
     let sum = 0;
-    for (let d = 0; d < 7; d++) sum += activity[dayKey(new Date(start + d * 86400000))]?.focusMin ?? 0;
+    for (let d = 0; d < 7; d++) sum += activityOnDay(activity, dayKey(addDays(start, d)), tasks, focusSessions).focusMin;
     return Math.round(sum / 60);
   });
 
@@ -107,7 +110,7 @@ export function AnalyticsCharts() {
               <span className="font-semibold text-ink tnum">{total - done}</span> open
             </div>
             <div>
-              <span className="font-semibold text-ink tnum">{sessions.length}</span> focus sessions logged
+              <span className="font-semibold text-ink tnum">{focusSessions.length}</span> focus sessions logged
             </div>
           </div>
         </div>

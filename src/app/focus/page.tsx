@@ -5,22 +5,23 @@ import { Chip } from "@/components/ui/Chip";
 import { FocusTimer } from "@/components/features/FocusTimer";
 import { dayKey, fmtDur, todayKey } from "@/lib/time";
 import { useProductivity } from "@/lib/store/productivity";
+import { activityOnDay, isFocusSession } from "@/lib/score";
+import { useTasks } from "@/lib/store/tasks";
 
 export default function FocusPage() {
   const sessions = useProductivity((s) => s.sessions);
   const activity = useProductivity((s) => s.activity);
+  const tasks = useTasks((s) => s.tasks);
   const today = todayKey();
-  const todaySessions = sessions.filter((s) => dayKey(s.startedAt) === today);
-  const recent = sessions.slice(0, 10);
+  const focusSessions = sessions.filter(isFocusSession);
+  const todaySessions = focusSessions.filter((s) => dayKey(s.startedAt) === today);
+  const recent = focusSessions.slice(0, 10);
 
   return (
     <div className="space-y-4">
       <div>
         <div className="label-xs">Focus</div>
         <h1 className="mt-1 text-[24px] font-semibold tracking-[-0.02em] text-ink">Focus timer</h1>
-        <p className="mt-1 text-[12.5px] text-ink-3">
-          Pomodoro, breaks or a custom block. Completed sessions are logged automatically and feed your productivity activity.
-        </p>
       </div>
       <FocusTimer full />
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -45,7 +46,7 @@ export default function FocusPage() {
           <div className="mt-4 space-y-3">
             <div className="rounded-xl bg-surface-2 px-3.5 py-3">
               <div className="label-xs">Focused</div>
-              <div className="tnum mt-0.5 text-[20px] font-semibold text-ink">{fmtDur(activity[today]?.focusMin ?? 0)}</div>
+              <div className="tnum mt-0.5 text-[20px] font-semibold text-ink">{fmtDur(activityOnDay(activity, today, tasks, focusSessions).focusMin)}</div>
             </div>
             <div className="rounded-xl bg-surface-2 px-3.5 py-3">
               <div className="label-xs">Sessions</div>
@@ -53,7 +54,7 @@ export default function FocusPage() {
             </div>
             <div className="rounded-xl bg-surface-2 px-3.5 py-3">
               <div className="label-xs">All-time sessions</div>
-              <div className="tnum mt-0.5 text-[20px] font-semibold text-ink">{sessions.length}</div>
+              <div className="tnum mt-0.5 text-[20px] font-semibold text-ink">{focusSessions.length}</div>
             </div>
           </div>
         </Card>

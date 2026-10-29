@@ -16,15 +16,17 @@ import { useProductivity } from "@/lib/store/productivity";
 import { useSettings } from "@/lib/store/settings";
 import { useTasks } from "@/lib/store/tasks";
 import { priorityChip } from "@/components/features/TaskBoard";
+import { activityOnDay, isFocusSession } from "@/lib/score";
 
 function DashboardHeader() {
   const now = useNow(30000);
   const name = useSettings((s) => s.name);
   const activity = useProductivity((s) => s.activity);
   const sessions = useProductivity((s) => s.sessions);
+  const tasks = useTasks((s) => s.tasks);
   const today = todayKey();
-  const a = activity[today];
-  const sessionCount = sessions.filter((s) => dayKey(s.startedAt) === today).length;
+  const a = activityOnDay(activity, today, tasks, sessions);
+  const sessionCount = sessions.filter((s) => dayKey(s.startedAt) === today && isFocusSession(s)).length;
   const pct = a?.planned ? Math.round((a.plannedDone / a.planned) * 100) : 0;
 
   return (
@@ -34,7 +36,7 @@ function DashboardHeader() {
       </h1>
       <p className="mt-1 text-[13px] text-ink-3">{fmtDateLong(now)}</p>
       <p className="mt-2 text-[12.5px] text-ink-2">
-        <span className="tnum font-semibold text-ink">{a?.tasksDone ?? 0} tasks completed</span>
+        <span className="tnum font-semibold text-ink">{a.tasksDone} tasks completed</span>
         <span className="mx-1.5 text-ink-3">·</span>
         <span className="tnum font-semibold text-ink">{sessionCount} focus sessions</span>
         <span className="mx-1.5 text-ink-3">·</span>

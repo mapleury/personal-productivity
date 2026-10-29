@@ -5,8 +5,8 @@ import { Card } from "@/components/ui/Card";
 import { Bar, Ring } from "@/components/ui/Progress";
 import { Sparkline } from "@/components/ui/charts";
 import { Chip } from "@/components/ui/Chip";
-import { dayKey, fmtDur, todayKey } from "@/lib/time";
-import { dayScore, streak } from "@/lib/score";
+import { addDays, dayKey, fmtDur, todayKey } from "@/lib/time";
+import { activityOnDay, dayScore, isFocusSession, streak } from "@/lib/score";
 import { useGoals } from "@/lib/store/goals";
 import { useProductivity } from "@/lib/store/productivity";
 import { useTasks } from "@/lib/store/tasks";
@@ -36,22 +36,23 @@ export function MetricCards() {
 
   const today = todayKey();
   const a = activity[today];
-  const planned = a?.planned ?? 0;
-  const done = a?.plannedDone ?? 0;
+  const daily = activityOnDay(activity, today, tasks, sessions);
+  const planned = daily.planned;
+  const done = daily.plannedDone;
   const remaining = tasks.filter((t) => t.status !== "done").length;
   const pct = planned ? Math.round((done / planned) * 100) : 0;
 
-  const weekFocus = Array.from({ length: 7 }, (_, i) => activity[dayKey(new Date(nowMs - (6 - i) * 86400000))]?.focusMin ?? 0);
+  const weekFocus = Array.from({ length: 7 }, (_, i) => activity[dayKey(addDays(new Date(nowMs), i - 6))]?.focusMin ?? 0);
   const timerState = running ? "running" : startedAt ? "paused" : "idle";
 
   const doneGoals = goals.filter((g) => g.progress >= 100).length;
   const avgGoal = goals.length ? Math.round(goals.reduce((s, g) => s + g.progress, 0) / goals.length) : 0;
 
-  const score = dayScore(a);
-  const keys = Array.from({ length: 400 }, (_, i) => dayKey(new Date(nowMs - i * 86400000)));
-  const streakDays = streak(activity, keys);
+  const score = dayScore(daily);
+  const keys = Array.from({ length: 400 }, (_, i) => dayKey(addDays(new Date(nowMs), -i)));
+  const streakDays = streak(activity, keys, tasks, sessions);
 
-  const todaySessions = sessions.filter((s) => dayKey(s.startedAt) === today);
+  const todaySessions = sessions.filter((s) => dayKey(s.startedAt) === today && isFocusSession(s));
   let peak = "—";
   if (todaySessions.length) {
     const first = todaySessions.reduce((m, s) => Math.min(m, s.startedAt), todaySessions[0].startedAt);

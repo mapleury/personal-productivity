@@ -1,6 +1,6 @@
 import type { AssistantContext } from "./briefing";
-import { dayScore, streak } from "./score";
-import { dayKey, todayKey } from "./time";
+import { activityOnDay, dayScore, isFocusSession, streak } from "./score";
+import { addDays, dayKey, todayKey } from "./time";
 import { useCalendar } from "./store/calendar";
 import { useGoals } from "./store/goals";
 import { useProductivity } from "./store/productivity";
@@ -22,12 +22,12 @@ export function buildContext(): AssistantContext {
     .map((t) => t.title);
   const sessions = useProductivity
     .getState()
-    .sessions.filter((s) => dayKey(s.startedAt) === today)
+    .sessions.filter((s) => dayKey(s.startedAt) === today && isFocusSession(s))
     .map((s) => ({ minutes: s.minutes, label: s.label ?? null }));
-  const a = useProductivity.getState().activity[today];
-  const keys = Array.from({ length: 400 }, (_, i) => dayKey(new Date(now.getTime() - i * 86400000)));
-  const planned = a?.planned ?? 0;
-  const plannedDone = a?.plannedDone ?? 0;
+  const keys = Array.from({ length: 400 }, (_, i) => dayKey(addDays(now, -i)));
+  const daily = activityOnDay(useProductivity.getState().activity, today, tasks, useProductivity.getState().sessions);
+  const planned = daily.planned;
+  const plannedDone = daily.plannedDone;
   return {
     name: useSettings.getState().name,
     currentTime: now.toISOString(),
@@ -50,16 +50,17 @@ export function buildContext(): AssistantContext {
     weeklyGoals: useGoals.getState().goals.map((g) => ({ title: g.title, progress: g.progress, deadline: g.deadline })),
     focusSessions: sessions,
     stats: {
-      focusMin: a?.focusMin ?? 0,
-      tasksDone: a?.tasksDone ?? 0,
+      focusMin: daily.focusMin,
+      tasksDone: daily.tasksDone,
       planned,
       plannedDone,
-      streak: streak(useProductivity.getState().activity, keys),
+      streak: streak(useProductivity.getState().activity, keys, tasks, useProductivity.getState().sessions),
       planPct: planned ? Math.round((plannedDone / planned) * 100) : 0,
     },
   };
 }
 
 export function todayScore(): number {
-  return dayScore(useProductivity.getState().activity[todayKey()]);
+  const productivity = useProductivity.getState();
+  return dayScore(activityOnDay(productivity.activity, todayKey(), useTasks.getState().tasks, productivity.sessions));
 }

@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/Button";
 import { Card, CardHead } from "@/components/ui/Card";
 import { cn } from "@/lib/cn";
 import { dayKey, fmtClock, fmtDur, todayKey } from "@/lib/time";
+import { unlockAudio } from "@/lib/sound";
 import { durationMin, remainingSec, useTimer } from "@/lib/store/timer";
 import { useTasks } from "@/lib/store/tasks";
 import { useProductivity } from "@/lib/store/productivity";
+import { isFocusSession } from "@/lib/score";
 import type { TimerMode } from "@/lib/types";
 
 const MODES: { id: TimerMode; label: string }[] = [
@@ -36,12 +38,19 @@ export function FocusTimer({ full = false }: { full?: boolean }) {
   const progress = total ? ((total - rem) / total) * 100 : 0;
   const open = tasks.filter((t) => t.status !== "done").sort((a, b) => a.order - b.order);
   const today = todayKey();
-  const todaySessions = sessions.filter((s) => dayKey(s.startedAt) === today);
+  const todaySessions = sessions.filter((s) => dayKey(s.startedAt) === today && isFocusSession(s));
   const focusedToday = activity[today]?.focusMin ?? 0;
 
   const size = full ? 224 : 168;
   const r = (size - 8) / 2;
   const c = 2 * Math.PI * r;
+
+  // Starting/resuming is the user gesture that lets the completion beep play later.
+  const startOrResume = () => {
+    unlockAudio();
+    if (timer.startedAt) timer.resume();
+    else timer.start();
+  };
 
   return (
     <Card className={cn("p-5", full && "p-7")}>
@@ -134,7 +143,7 @@ export function FocusTimer({ full = false }: { full?: boolean }) {
                 <Pause size={13} /> Pause
               </Button>
             ) : (
-              <Button variant="accent" size="md" className="flex-1" onClick={timer.startedAt ? timer.resume : timer.start}>
+              <Button variant="accent" size="md" className="flex-1" onClick={startOrResume}>
                 <Play size={13} /> {timer.startedAt ? "Resume" : "Start"}
               </Button>
             )}

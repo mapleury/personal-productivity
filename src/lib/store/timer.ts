@@ -2,10 +2,16 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { TimerMode } from "../types";
 import { uid } from "../time";
+import { playCompletionBeeps } from "../sound";
 import { useProductivity } from "./productivity";
 import { useTasks } from "./tasks";
 
 const BASE: Record<TimerMode, number> = { pomodoro: 25, short: 5, long: 15, custom: 50 };
+
+// A timer that expired while the page was closed is still logged on reload,
+// but beeping minutes or hours later would be noise. Allow slack for
+// background-tab throttling (browsers can tick as rarely as once a minute).
+const BEEP_MAX_LATE_MS = 2 * 60 * 1000;
 
 interface TimerState {
   mode: TimerMode;
@@ -51,15 +57,33 @@ export const useTimer = create<TimerState>()(
       activeTaskId: null,
       completedPomodoros: 0,
       lastCompletedAt: null,
-      setMode: (m) => set({ mode: m, running: false, endsAt: null, pausedRemaining: durationMin({ mode: m, customMin: get().customMin }) * 60 }),
+      setMode: (m) => {
+        if (get().mode === m) return;
+        set({
+          mode: m,
+          running: false,
+          endsAt: null,
+          startedAt: null,
+          pausedRemaining: durationMin({ mode: m, customMin: get().customMin }) * 60,
+        });
+      },
       setCustom: (min) => {
         const v = Math.max(1, Math.min(240, Math.round(min)));
-        set((s) => ({
-          customMin: v,
-          ...(s.mode === "custom" && !s.running ? { pausedRemaining: v * 60 } : {}),
-        }));
+        const s = get();
+        if (s.mode !== "custom") {
+          set({ customMin: v });
+          return;
+        }
+        if (s.running) {
+          const elapsed = durationMin(s) * 60 - remainingSec(s);
+          const remaining = Math.max(0, v * 60 - elapsed);
+          set({ customMin: v, pausedRemaining: remaining, endsAt: Date.now() + remaining * 1000 });
+          return;
+        }
+        set({ customMin: v, pausedRemaining: v * 60 });
       },
       start: () => {
+        if (get().running) return;
         const dur = durationMin(get()) * 60;
         set({ running: true, startedAt: Date.now(), endsAt: Date.now() + dur * 1000, pausedRemaining: dur });
       },
@@ -71,24 +95,32 @@ export const useTimer = create<TimerState>()(
       },
       reset: () => set({ running: false, endsAt: null, pausedRemaining: durationMin(get()) * 60, startedAt: null }),
       skip: () => {
-        const m = nextMode(get().mode, get().completedPomodoros + 1);
+        const m = get().mode === "pomodoro" ? "short" : "pomodoro";
         set({ mode: m, running: false, endsAt: null, startedAt: null, pausedRemaining: durationMin({ mode: m, customMin: get().customMin }) * 60 });
       },
       complete: () => {
         const s = get();
+        const endedAt = Date.now();
+        // Only a running timer that has really expired gets past this guard.
+        // The state change below sets running: false synchronously, so repeated
+        // interval ticks (or a second caller) return here and never re-log or re-beep.
+        if (!s.running || !s.endsAt || s.endsAt > endedAt) return;
+        const isFocus = s.mode === "pomodoro" || s.mode === "custom";
         const minutes = durationMin(s);
         const task = s.activeTaskId ? useTasks.getState().tasks.find((t) => t.id === s.activeTaskId) : null;
-        const endedAt = Date.now();
-        useProductivity.getState().recordSession({
-          id: uid("s"),
-          startedAt: s.startedAt ?? endedAt - minutes * 60000,
-          endedAt,
-          minutes,
-          mode: s.mode,
-          taskId: s.activeTaskId,
-          label: task?.title,
-        });
-        if (task) useTasks.getState().update(task.id, { actualMin: task.actualMin + minutes });
+        const lateMs = endedAt - s.endsAt;
+        if (isFocus) {
+          useProductivity.getState().recordSession({
+            id: uid("s"),
+            startedAt: s.startedAt ?? endedAt - minutes * 60000,
+            endedAt,
+            minutes,
+            mode: s.mode,
+            taskId: s.activeTaskId,
+            label: task?.title,
+          });
+          if (task) useTasks.getState().update(task.id, { actualMin: task.actualMin + minutes });
+        }
         const pomodoros = s.completedPomodoros + (s.mode === "pomodoro" ? 1 : 0);
         const m = nextMode(s.mode, pomodoros);
         set({
@@ -100,6 +132,9 @@ export const useTimer = create<TimerState>()(
           startedAt: null,
           pausedRemaining: durationMin({ mode: m, customMin: s.customMin }) * 60,
         });
+        // Fire-and-forget after state and logging are settled: audio can never
+        // block or break completion (playCompletionBeeps swallows its own errors).
+        if (isFocus && lateMs <= BEEP_MAX_LATE_MS) void playCompletionBeeps();
       },
       setActiveTask: (id) => set({ activeTaskId: id }),
     }),

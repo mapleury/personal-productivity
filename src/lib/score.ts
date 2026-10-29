@@ -1,4 +1,8 @@
-import type { DayActivity } from "./types";
+import type { DayActivity, FocusSession, Task } from "./types";
+import { dayKey } from "./time";
+
+export const isFocusSession = (session: FocusSession) =>
+  session.mode !== "short" && session.mode !== "long";
 
 /** Heuristic 0-100 "productivity activity" index for a day. Not a scientific measure. */
 export function dayScore(a?: DayActivity): number {
@@ -8,6 +12,30 @@ export function dayScore(a?: DayActivity): number {
     a.planned > 0 ? (Math.min(a.plannedDone, a.planned) / a.planned) * 35 : Math.min(a.tasksDone / 6, 1) * 35;
   const sessions = (Math.min(a.sessions, 5) / 5) * 10;
   return Math.round(focus + tasks + sessions);
+}
+
+export function activityOnDay(
+  activity: Record<string, DayActivity>,
+  key: string,
+  tasks: Task[] = [],
+  sessions: FocusSession[] = [],
+): DayActivity {
+  const stored = activity[key];
+  const dueTasks = tasks.filter((task) => task.dueDate === key);
+  const completedTasks = tasks.filter(
+    (task) =>
+      (task.completedAt && dayKey(task.completedAt) === key) ||
+      (!task.completedAt && task.status === "done" && task.dueDate === key),
+  );
+  const focusSessions = sessions.filter((session) => dayKey(session.startedAt) === key && isFocusSession(session));
+  return {
+    date: key,
+    focusMin: Math.max(stored?.focusMin ?? 0, focusSessions.reduce((total, session) => total + session.minutes, 0)),
+    tasksDone: Math.max(stored?.tasksDone ?? 0, completedTasks.length),
+    planned: Math.max(stored?.planned ?? 0, dueTasks.length),
+    plannedDone: Math.max(stored?.plannedDone ?? 0, dueTasks.filter((task) => task.status === "done").length),
+    sessions: Math.max(stored?.sessions ?? 0, focusSessions.length),
+  };
 }
 
 export type Level = 0 | 1 | 2 | 3 | 4;
@@ -36,15 +64,22 @@ export const LEVEL_LABEL: Record<Level, string> = {
   4: "Very high",
 };
 
-export const STREAK_THRESHOLD = 30;
-
-/** Consecutive days at or above threshold, ending today or yesterday. */
-export function streak(activity: Record<string, DayActivity>, keys: string[]): number {
+/** Consecutive days with a completed task or at least 10 minutes of focus. */
+export function streak(
+  activity: Record<string, DayActivity>,
+  keys: string[],
+  tasks: Task[] = [],
+  sessions: FocusSession[] = [],
+): number {
   let i = 0;
-  if (keys.length && dayScore(activity[keys[0]]) < STREAK_THRESHOLD) i = 1;
+  const hasActivity = (key: string) => {
+    const day = activityOnDay(activity, key, tasks, sessions);
+    return day.tasksDone > 0 || day.plannedDone > 0 || day.focusMin >= 10;
+  };
+  if (keys.length && !hasActivity(keys[0])) i = 1;
   let count = 0;
   for (; i < keys.length; i++) {
-    if (dayScore(activity[keys[i]]) >= STREAK_THRESHOLD) count++;
+    if (hasActivity(keys[i])) count++;
     else break;
   }
   return count;

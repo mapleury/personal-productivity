@@ -13,6 +13,7 @@ import { useCalendar } from "@/lib/store/calendar";
 import { useGoals } from "@/lib/store/goals";
 import { useProductivity } from "@/lib/store/productivity";
 import { useTasks } from "@/lib/store/tasks";
+import { isFocusSession } from "@/lib/score";
 
 export function WeeklyGoals() {
   const goals = useGoals((s) => s.goals);
@@ -101,7 +102,7 @@ export function WeekStrip() {
         const key = dayKey(d);
         const t = tasks.filter((x) => x.dueDate === key).length;
         const e = events.filter((x) => x.date === key).length;
-        const s = sessions.filter((x) => dayKey(x.startedAt) === key).length;
+        const s = sessions.filter((x) => dayKey(x.startedAt) === key && isFocusSession(x)).length;
         const isToday = key === today;
         return (
           <div
