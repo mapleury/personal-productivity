@@ -12,6 +12,7 @@ import { useProductivity } from "@/lib/store/productivity";
 import { useSettings } from "@/lib/store/settings";
 import { useTasks } from "@/lib/store/tasks";
 import { BackupCard } from "@/components/features/BackupCard";
+import { exportBackup } from "@/lib/backup";
 export default function SettingsPage() {
   const { name, setName, autoSpeak, setAutoSpeak } = useSettings();
   const [api, setApi] = useState<{ gemini?: boolean; elevenlabs?: boolean }>({});
@@ -22,26 +23,6 @@ export default function SettingsPage() {
       .then(setApi)
       .catch(() => setApi({}));
   }, []);
-
-  const exportData = () => {
-    const data = {
-      tasks: useTasks.getState().tasks,
-      goals: useGoals.getState().goals,
-      events: useCalendar.getState().events,
-      productivity: {
-        activity: useProductivity.getState().activity,
-        sessions: useProductivity.getState().sessions,
-      },
-      settings: { name, autoSpeak },
-      exportedAt: new Date().toISOString(),
-    };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `wanei-export-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
 
   const clearData = async () => {
     if (!window.confirm("Delete all local data (tasks, goals, calendar, productivity, focus sessions, music library)? This cannot be undone.")) return;
@@ -108,7 +89,7 @@ export default function SettingsPage() {
       <Card className="p-5">
         <CardHead title="Data" sub="Everything is stored locally in this browser (localStorage + IndexedDB)." />
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button variant="soft" size="md" onClick={exportData}>
+          <Button variant="soft" size="md" onClick={exportBackup}>
             <Download size={13} /> Export JSON
           </Button>
           <Button variant="outline" size="md" className="text-ink-3" onClick={clearData}>

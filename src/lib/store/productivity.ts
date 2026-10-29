@@ -9,6 +9,7 @@ interface ProdState {
   recordSession: (s: FocusSession) => void;
   addFocus: (key: string, minutes: number) => void;
   bumpTasksDone: (key: string, delta: number) => void;
+  bumpPlannedDone: (key: string, delta: number) => void;
   bumpPlanned: (key: string, delta: number) => void;
 }
 
@@ -47,14 +48,14 @@ export const useProductivity = create<ProdState>()(
         set((st) => {
           const a = st.activity[key] ?? zero(key);
           return {
-            activity: {
-              ...st.activity,
-              [key]: {
-                ...a,
-                tasksDone: Math.max(0, a.tasksDone + delta),
-                plannedDone: Math.max(0, a.plannedDone + delta),
-              },
-            },
+            activity: { ...st.activity, [key]: { ...a, tasksDone: Math.max(0, a.tasksDone + delta) } },
+          };
+        }),
+      bumpPlannedDone: (key, delta) =>
+        set((st) => {
+          const a = st.activity[key] ?? zero(key);
+          return {
+            activity: { ...st.activity, [key]: { ...a, plannedDone: Math.max(0, a.plannedDone + delta) } },
           };
         }),
       bumpPlanned: (key, delta) =>

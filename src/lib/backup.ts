@@ -5,6 +5,8 @@ const KEYS = [
   "wanei.goals.v2",
   "wanei.calendar.v2",
   "wanei.productivity.v2",
+  "wanei.timer.v1",
+  "wanei.assistant.v1",
   "wanei.settings.v1",
 ];
 

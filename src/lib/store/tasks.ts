@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Task, TaskStatus } from "../types";
-import { todayKey, uid } from "../time";
+import { dayKey, todayKey, uid } from "../time";
 import { useProductivity } from "./productivity";
 
 interface TasksState {
@@ -50,14 +50,25 @@ export const useTasks = create<TasksState>()(
             const p = useProductivity.getState();
             if (prev.dueDate) p.bumpPlanned(prev.dueDate, -1);
             if (patch.dueDate) p.bumpPlanned(patch.dueDate, 1);
+            if (prev.status === "done") {
+              const completedKey = dayKey(prev.completedAt ?? Date.now());
+              p.bumpPlannedDone(prev.dueDate ?? completedKey, -1);
+              p.bumpPlannedDone(patch.dueDate ?? completedKey, 1);
+            }
           }
           return { tasks: st.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) };
         }),
       remove: (id) =>
         set((st) => {
           const prev = st.tasks.find((t) => t.id === id);
-          if (prev?.dueDate && prev.status !== "done")
-            useProductivity.getState().bumpPlanned(prev.dueDate, -1);
+          if (prev) {
+            const productivity = useProductivity.getState();
+            if (prev.dueDate) productivity.bumpPlanned(prev.dueDate, -1);
+            if (prev.status === "done") {
+              const completedKey = dayKey(prev.completedAt ?? Date.now());
+              productivity.bumpPlannedDone(prev.dueDate ?? completedKey, -1);
+            }
+          }
           return { tasks: st.tasks.filter((t) => t.id !== id) };
         }),
       setStatus: (id, status) =>
@@ -65,8 +76,16 @@ export const useTasks = create<TasksState>()(
           const prev = st.tasks.find((t) => t.id === id);
           if (!prev || prev.status === status) return st;
           const p = useProductivity.getState();
-          if (status === "done" && prev.status !== "done") p.bumpTasksDone(prev.dueDate ?? todayKey(), 1);
-          if (prev.status === "done" && status !== "done") p.bumpTasksDone(prev.dueDate ?? todayKey(), -1);
+          if (status === "done") {
+            const completedKey = todayKey();
+            p.bumpTasksDone(completedKey, 1);
+            p.bumpPlannedDone(prev.dueDate ?? completedKey, 1);
+          }
+          if (prev.status === "done" && status !== "done") {
+            const completedKey = dayKey(prev.completedAt ?? Date.now());
+            p.bumpTasksDone(completedKey, -1);
+            p.bumpPlannedDone(prev.dueDate ?? completedKey, -1);
+          }
           return {
             tasks: st.tasks.map((t) =>
               t.id === id

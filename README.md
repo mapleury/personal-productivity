@@ -105,9 +105,11 @@ ELEVENLABS_MODEL=eleven_multilingual_v2
 
 The app is intentionally local-first.
 
-- Tasks, goals, calendar entries, productivity data, and settings are stored in browser localStorage
+- Tasks, goals, calendar entries, productivity data, timer state, assistant conversation history, and settings are stored in browser localStorage
 - Music files are stored in IndexedDB under the app’s local database
-- The settings page includes exporting or resetting local data
+- Focus sessions are added to productivity activity only when a timer reaches completion; reset or skip does not log a session
+- Data is isolated to the current browser profile and site origin, so it is not shared between devices, browsers, or `localhost` and a deployed site
+- The settings page includes exporting or resetting local data; backups include persisted timer state and assistant history
 
 This means the app is best used as a personal device-local workspace rather than a multi-user service.
 
